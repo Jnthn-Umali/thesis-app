@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
@@ -51,13 +51,43 @@ try {
 interface CameraPreviewProps {
   hasPermission: boolean;
   onRequestPermission: () => void;
+  onPictureTaken?: (uri: string) => void;
 }
 
-export const CameraPreview: React.FC<CameraPreviewProps> = ({
+export const CameraPreview = forwardRef<any, CameraPreviewProps>(({
   hasPermission,
   onRequestPermission,
-}) => {
+  onPictureTaken,
+}, ref) => {
   const cameraRef = useRef<any>(null);
+
+  // Method to take a picture
+  const takePicture = async (): Promise<string | null> => {
+    if (!cameraRef.current || !hasPermission) {
+      return null;
+    }
+
+    try {
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+        base64: false,
+      });
+      
+      if (onPictureTaken) {
+        onPictureTaken(photo.uri);
+      }
+      
+      return photo.uri;
+    } catch (error) {
+      console.error('Error taking picture:', error);
+      return null;
+    }
+  };
+
+  // Expose takePicture method via ref
+  useImperativeHandle(ref, () => ({
+    takePicture,
+  }));
 
   // Request camera permission on component mount
   useEffect(() => {
@@ -150,7 +180,7 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({
       </View>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
